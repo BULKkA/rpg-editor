@@ -1,0 +1,1087 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>RPG DB Editor</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Unbounded:wght@300;600;900&display=swap" rel="stylesheet"/>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #0a0c10;
+  --surface: #111318;
+  --surface2: #181c24;
+  --border: #252a36;
+  --accent: #7c6af7;
+  --accent2: #4ade80;
+  --accent3: #f97316;
+  --text: #e8eaf0;
+  --text2: #8892a4;
+  --danger: #ef4444;
+  --font-mono: 'JetBrains Mono', monospace;
+  --font-head: 'Unbounded', sans-serif;
+}
+html, body { height: 100%; background: var(--bg); color: var(--text); font-family: var(--font-mono); font-size: 13px; line-height: 1.6; }
+#root { height: 100%; }
+
+/* SCROLLBAR */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--accent); }
+
+/* LAYOUT */
+.app { display: flex; flex-direction: column; height: 100vh; }
+.topbar { display: flex; align-items: center; gap: 16px; padding: 10px 20px; background: var(--surface); border-bottom: 1px solid var(--border); flex-shrink: 0; }
+.logo { font-family: var(--font-head); font-size: 14px; font-weight: 900; letter-spacing: 0.05em; color: var(--accent); white-space: nowrap; }
+.logo span { color: var(--accent2); }
+.topbar-right { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+.session-badge { font-size: 10px; color: var(--text2); border: 1px solid var(--border); padding: 3px 8px; border-radius: 4px; }
+.session-badge.active { border-color: var(--accent2); color: var(--accent2); }
+
+.main { display: flex; flex: 1; overflow: hidden; }
+.sidebar { width: 200px; flex-shrink: 0; background: var(--surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; padding: 8px 0; overflow-y: auto; }
+.nav-item { display: flex; align-items: center; gap: 10px; padding: 10px 16px; cursor: pointer; transition: all 0.15s; color: var(--text2); font-size: 12px; font-family: var(--font-mono); border-left: 3px solid transparent; }
+.nav-item:hover { background: var(--surface2); color: var(--text); }
+.nav-item.active { background: var(--surface2); color: var(--accent); border-left-color: var(--accent); }
+.nav-icon { font-size: 16px; width: 20px; text-align: center; }
+.nav-section { padding: 16px 16px 6px; font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text2); opacity: 0.5; }
+
+.content { flex: 1; overflow-y: auto; padding: 24px; }
+
+/* UPLOAD SCREEN */
+.upload-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; gap: 32px; }
+.upload-hero { text-align: center; }
+.upload-hero h1 { font-family: var(--font-head); font-size: 36px; font-weight: 900; background: linear-gradient(135deg, var(--accent), var(--accent2)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; letter-spacing: -0.02em; }
+.upload-hero p { color: var(--text2); margin-top: 8px; font-size: 13px; }
+.dropzone { width: 480px; border: 2px dashed var(--border); border-radius: 16px; padding: 48px; text-align: center; cursor: pointer; transition: all 0.2s; }
+.dropzone:hover, .dropzone.drag { border-color: var(--accent); background: rgba(124,106,247,0.05); }
+.dropzone .drop-icon { font-size: 48px; margin-bottom: 16px; }
+.dropzone h3 { font-family: var(--font-head); font-size: 14px; font-weight: 600; margin-bottom: 8px; }
+.dropzone p { color: var(--text2); font-size: 12px; }
+input[type=file] { display: none; }
+
+/* BUTTONS */
+.btn { display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; border-radius: 6px; border: 1px solid var(--border); background: var(--surface2); color: var(--text); font-family: var(--font-mono); font-size: 12px; cursor: pointer; transition: all 0.15s; white-space: nowrap; }
+.btn:hover { border-color: var(--accent); color: var(--accent); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.btn.primary:hover { background: #6a58e0; border-color: #6a58e0; color: #fff; }
+.btn.success { background: var(--accent2); border-color: var(--accent2); color: #000; }
+.btn.success:hover { opacity: 0.85; }
+.btn.danger { border-color: var(--danger); color: var(--danger); }
+.btn.danger:hover { background: var(--danger); color: #fff; }
+.btn.sm { padding: 4px 10px; font-size: 11px; }
+.btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* CARDS & PANELS */
+.panel { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+.panel-header { display: flex; align-items: center; justify-content: space-between; padding: 14px 18px; border-bottom: 1px solid var(--border); background: var(--surface2); }
+.panel-title { font-family: var(--font-head); font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text2); }
+.panel-body { padding: 18px; }
+
+/* LIST ITEMS */
+.list-item { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--border); cursor: pointer; transition: background 0.1s; }
+.list-item:last-child { border-bottom: none; }
+.list-item:hover { background: var(--surface2); }
+.list-item.selected { background: rgba(124,106,247,0.1); border-left: 3px solid var(--accent); }
+.list-item-id { font-size: 11px; color: var(--accent); font-weight: 700; min-width: 140px; }
+.list-item-info { flex: 1; }
+.list-item-title { font-size: 12px; color: var(--text); }
+.list-item-sub { font-size: 11px; color: var(--text2); }
+.badge { display: inline-flex; align-items: center; padding: 2px 7px; border-radius: 4px; font-size: 10px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; }
+.badge.story { background: rgba(249,115,22,0.15); color: var(--accent3); border: 1px solid rgba(249,115,22,0.3); }
+.badge.side { background: rgba(74,222,128,0.1); color: var(--accent2); border: 1px solid rgba(74,222,128,0.25); }
+
+/* FORMS */
+.form-grid { display: grid; gap: 14px; }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.form-group { display: flex; flex-direction: column; gap: 5px; }
+.form-label { font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text2); }
+.form-input { background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 8px 12px; color: var(--text); font-family: var(--font-mono); font-size: 12px; transition: border-color 0.15s; outline: none; }
+.form-input:focus { border-color: var(--accent); }
+.form-input.mono { font-family: var(--font-mono); }
+textarea.form-input { resize: vertical; min-height: 70px; }
+select.form-input { cursor: pointer; }
+.checkbox-group { display: flex; align-items: center; gap: 8px; padding: 8px 0; cursor: pointer; }
+.checkbox-group input { width: 14px; height: 14px; accent-color: var(--accent); cursor: pointer; }
+
+/* SPLIT LAYOUT */
+.split { display: grid; grid-template-columns: 320px 1fr; gap: 20px; height: calc(100vh - 130px); }
+.split-left { overflow-y: auto; }
+.split-right { overflow-y: auto; }
+
+/* DIALOGUE FLOW */
+.flow-container { position: relative; overflow: auto; min-height: 400px; padding: 20px; }
+.flow-nodes { display: flex; flex-direction: column; gap: 8px; }
+.flow-node { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 14px; position: relative; transition: border-color 0.15s; }
+.flow-node:hover { border-color: var(--accent); }
+.flow-node.selected { border-color: var(--accent); background: rgba(124,106,247,0.08); }
+.flow-node-id { font-size: 10px; color: var(--accent); font-weight: 700; margin-bottom: 6px; letter-spacing: 0.05em; }
+.flow-node-text { font-size: 12px; color: var(--text); margin-bottom: 10px; line-height: 1.5; }
+.flow-choices { display: flex; flex-direction: column; gap: 5px; }
+.flow-choice { display: flex; align-items: center; gap: 8px; background: var(--surface); border: 1px solid var(--border); border-radius: 5px; padding: 6px 10px; font-size: 11px; cursor: pointer; transition: all 0.15s; }
+.flow-choice:hover { border-color: var(--accent2); }
+.flow-choice-arrow { color: var(--accent2); }
+.flow-choice-next { color: var(--text2); font-size: 10px; }
+.flow-choice-action { color: var(--accent3); font-size: 10px; }
+
+/* DIAGRAM */
+.diagram-wrap { overflow-x: auto; overflow-y: auto; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); min-height: 300px; padding: 20px; }
+svg.flow-svg { display: block; }
+.node-rect { fill: var(--surface2); stroke: var(--border); stroke-width: 1.5; rx: 8; }
+.node-rect.active { stroke: var(--accent); fill: rgba(124,106,247,0.12); }
+.node-label { fill: var(--accent); font-family: var(--font-mono); font-size: 10px; font-weight: 700; }
+.node-text { fill: var(--text); font-family: var(--font-mono); font-size: 10px; }
+.edge-line { stroke: var(--border); stroke-width: 1.5; fill: none; marker-end: url(#arrow); }
+.edge-label { fill: var(--accent2); font-family: var(--font-mono); font-size: 9px; }
+
+/* TABS */
+.tabs { display: flex; gap: 2px; border-bottom: 1px solid var(--border); margin-bottom: 20px; }
+.tab { padding: 9px 18px; cursor: pointer; font-size: 12px; color: var(--text2); border-bottom: 2px solid transparent; transition: all 0.15s; }
+.tab:hover { color: var(--text); }
+.tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+/* STEPS */
+.steps-list { display: flex; flex-direction: column; gap: 8px; }
+.step-item { display: grid; grid-template-columns: 40px 1fr 1fr 80px 36px; gap: 8px; align-items: center; background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; padding: 10px 12px; }
+.step-num { color: var(--text2); font-size: 11px; text-align: center; }
+
+/* TOAST */
+.toast-wrap { position: fixed; bottom: 24px; right: 24px; display: flex; flex-direction: column; gap: 8px; z-index: 1000; }
+.toast { padding: 10px 16px; border-radius: 8px; font-size: 12px; border: 1px solid; animation: toastIn 0.2s ease; }
+.toast.success { background: rgba(74,222,128,0.15); border-color: var(--accent2); color: var(--accent2); }
+.toast.error { background: rgba(239,68,68,0.12); border-color: var(--danger); color: var(--danger); }
+@keyframes toastIn { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: none; } }
+
+/* EMPTY STATE */
+.empty { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 60px 20px; gap: 12px; color: var(--text2); }
+.empty-icon { font-size: 40px; opacity: 0.4; }
+.empty h3 { font-family: var(--font-head); font-size: 13px; font-weight: 600; }
+
+/* MODAL */
+.modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 200; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(4px); }
+.modal { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; width: 640px; max-height: 85vh; overflow-y: auto; }
+.modal-header { display: flex; align-items: center; justify-content: space-between; padding: 18px 22px; border-bottom: 1px solid var(--border); }
+.modal-title { font-family: var(--font-head); font-size: 13px; font-weight: 700; }
+.modal-body { padding: 22px; }
+.modal-footer { display: flex; justify-content: flex-end; gap: 10px; padding: 16px 22px; border-top: 1px solid var(--border); }
+
+/* TRANS TABLE */
+.trans-table { width: 100%; border-collapse: collapse; }
+.trans-table th { text-align: left; padding: 8px 12px; font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text2); border-bottom: 1px solid var(--border); }
+.trans-table td { padding: 6px 8px; border-bottom: 1px solid rgba(37,42,54,0.5); vertical-align: middle; }
+.trans-table tr:hover td { background: var(--surface2); }
+.trans-key { font-size: 11px; color: var(--accent); font-family: var(--font-mono); }
+.inline-edit { background: transparent; border: 1px solid transparent; border-radius: 4px; padding: 4px 8px; color: var(--text); font-family: var(--font-mono); font-size: 12px; width: 100%; outline: none; }
+.inline-edit:hover { border-color: var(--border); }
+.inline-edit:focus { border-color: var(--accent); background: var(--bg); }
+
+/* STATS */
+.stats-row { display: flex; gap: 16px; margin-bottom: 20px; flex-wrap: wrap; }
+.stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px 20px; min-width: 120px; }
+.stat-val { font-family: var(--font-head); font-size: 28px; font-weight: 900; color: var(--accent); }
+.stat-lbl { font-size: 10px; color: var(--text2); text-transform: uppercase; letter-spacing: 0.08em; margin-top: 4px; }
+
+.separator { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
+.tag { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 4px; font-size: 10px; background: rgba(124,106,247,0.12); color: var(--accent); border: 1px solid rgba(124,106,247,0.25); margin: 2px; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect, useRef, useCallback } = React;
+
+const API = '';
+
+// Toast context
+function useToast() {
+  const [toasts, setToasts] = useState([]);
+  const show = (msg, type='success') => {
+    const id = Date.now();
+    setToasts(t => [...t, { id, msg, type }]);
+    setTimeout(() => setToasts(t => t.filter(x => x.id !== id)), 3000);
+  };
+  return { toasts, show };
+}
+
+// ---- UPLOAD SCREEN ----
+function UploadScreen({ onUpload }) {
+  const [drag, setDrag] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const inputRef = useRef();
+
+  const handleFile = async (file) => {
+    if (!file) return;
+    setLoading(true);
+    const fd = new FormData();
+    fd.append('db', file);
+    try {
+      const r = await fetch(`${API}/api/upload`, { method: 'POST', body: fd });
+      const d = await r.json();
+      if (d.sessionId) onUpload(d);
+      else alert(d.error || 'Ошибка загрузки');
+    } catch(e) { alert('Ошибка соединения'); }
+    setLoading(false);
+  };
+
+  return (
+    <div className="upload-screen">
+      <div className="upload-hero">
+        <h1>RPG DB<span> Editor</span></h1>
+        <p>Редактор квестов и диалогов для игровой базы данных SQLite</p>
+      </div>
+      <div
+        className={`dropzone ${drag ? 'drag' : ''}`}
+        onDragOver={e => { e.preventDefault(); setDrag(true); }}
+        onDragLeave={() => setDrag(false)}
+        onDrop={e => { e.preventDefault(); setDrag(false); handleFile(e.dataTransfer.files[0]); }}
+        onClick={() => inputRef.current?.click()}
+      >
+        <div className="drop-icon">🗄️</div>
+        <h3>{loading ? 'Загрузка...' : 'Загрузить базу данных'}</h3>
+        <p>Перетащите файл .db или нажмите для выбора</p>
+        <p style={{marginTop:8,color:'#4ade80',fontSize:11}}>game_data.db · slot_1.db</p>
+        <input ref={inputRef} type="file" accept=".db,.sqlite,.sqlite3" onChange={e => handleFile(e.target.files[0])}/>
+      </div>
+    </div>
+  );
+}
+
+// ---- DIALOGUE DIAGRAM SVG ----
+function DialogueDiagram({ dialogues, choices, translations, lang, onSelectNode, selectedId }) {
+  const NODE_W = 220, NODE_H = 80, H_GAP = 60, V_GAP = 40;
+  
+  // Build adjacency
+  const byId = {};
+  for (const d of dialogues) byId[d.id] = d;
+  
+  const getText = (key) => {
+    const t = translations.find(t => t.id === key && t.language_id === lang);
+    return t ? t.text : key;
+  };
+
+  // BFS layout
+  const starts = dialogues.filter(d => !choices.some(c => c.next_dialogue_id === d.id));
+  const levels = {};
+  const visited = new Set();
+  const queue = [...(starts.length ? starts : dialogues.slice(0,1)).map(d => ({ id: d.id, lvl: 0, col: 0 }))];
+  const positions = {};
+  const colCounts = {};
+  
+  while (queue.length) {
+    const { id, lvl } = queue.shift();
+    if (visited.has(id)) continue;
+    visited.add(id);
+    if (!colCounts[lvl]) colCounts[lvl] = 0;
+    positions[id] = { x: lvl * (NODE_W + H_GAP), y: colCounts[lvl] * (NODE_H + V_GAP) };
+    colCounts[lvl]++;
+    const outChoices = choices.filter(c => c.dialogue_id === id && c.next_dialogue_id);
+    for (const c of outChoices) {
+      if (c.next_dialogue_id && !visited.has(c.next_dialogue_id)) {
+        queue.push({ id: c.next_dialogue_id, lvl: lvl + 1 });
+      }
+    }
+  }
+  // place unvisited
+  for (const d of dialogues) {
+    if (!positions[d.id]) {
+      const lvl = Object.keys(colCounts).length;
+      if (!colCounts[lvl]) colCounts[lvl] = 0;
+      positions[d.id] = { x: lvl * (NODE_W + H_GAP), y: colCounts[lvl] * (NODE_H + V_GAP) };
+      colCounts[lvl]++;
+    }
+  }
+
+  const maxX = Math.max(...Object.values(positions).map(p => p.x)) + NODE_W + 40;
+  const maxY = Math.max(...Object.values(positions).map(p => p.y)) + NODE_H + 40;
+
+  const truncate = (str, n) => str && str.length > n ? str.slice(0, n) + '…' : str || '';
+
+  return (
+    <div className="diagram-wrap">
+      <svg className="flow-svg" width={maxX} height={maxY} xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <marker id="arrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+            <path d="M0,0 L0,6 L8,3 z" fill="#252a36"/>
+          </marker>
+          <marker id="arrow-accent" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+            <path d="M0,0 L0,6 L8,3 z" fill="#4ade80"/>
+          </marker>
+        </defs>
+        {/* Edges */}
+        {choices.filter(c => c.next_dialogue_id && positions[c.dialogue_id] && positions[c.next_dialogue_id]).map((c, i) => {
+          const from = positions[c.dialogue_id];
+          const to = positions[c.next_dialogue_id];
+          const x1 = from.x + NODE_W;
+          const y1 = from.y + NODE_H / 2;
+          const x2 = to.x;
+          const y2 = to.y + NODE_H / 2;
+          const mx = (x1 + x2) / 2;
+          return (
+            <g key={i}>
+              <path className="edge-line" d={`M${x1},${y1} C${mx},${y1} ${mx},${y2} ${x2},${y2}`} markerEnd="url(#arrow)"/>
+              <text className="edge-label" x={mx} y={(y1+y2)/2 - 4} textAnchor="middle">
+                {truncate(getText(c.text_key), 18)}
+              </text>
+            </g>
+          );
+        })}
+        {/* Nodes */}
+        {dialogues.map(d => {
+          const pos = positions[d.id] || { x: 0, y: 0 };
+          const isSelected = selectedId === d.id;
+          const nodeText = truncate(getText(d.text_key), 32);
+          return (
+            <g key={d.id} onClick={() => onSelectNode(d.id)} style={{ cursor: 'pointer' }} transform={`translate(${pos.x + 20},${pos.y + 20})`}>
+              <rect width={NODE_W} height={NODE_H} rx={8} className={`node-rect ${isSelected ? 'active' : ''}`}/>
+              <text className="node-label" x={10} y={18}>{d.id}</text>
+              <foreignObject x={8} y={24} width={NODE_W - 16} height={NODE_H - 32}>
+                <div xmlns="http://www.w3.org/1999/xhtml" style={{fontSize:10,color:'#8892a4',lineHeight:1.4,overflow:'hidden',height:'100%'}}>
+                  {nodeText}
+                </div>
+              </foreignObject>
+            </g>
+          );
+        })}
+      </svg>
+    </div>
+  );
+}
+
+// ---- QUEST EDITOR ----
+function QuestEditor({ sessionId, toast }) {
+  const [data, setData] = useState(null);
+  const [selected, setSelected] = useState(null);
+  const [editing, setEditing] = useState(null);
+  const [showModal, setShowModal] = useState(false);
+
+  const load = async () => {
+    const r = await fetch(`${API}/api/${sessionId}/quests`);
+    setData(await r.json());
+  };
+
+  useEffect(() => { load(); }, []);
+
+  const getLang = (key, lang) => {
+    if (!data) return key;
+    const t = data.translations.find(t => t.id === key && t.language_id === lang);
+    return t ? t.text : key;
+  };
+
+  const newQuest = () => {
+    setEditing({
+      quest: { id: '', type: 'single', title_key: '', description_key: '', is_story: false },
+      steps: [],
+      translations: []
+    });
+    setShowModal(true);
+  };
+
+  const editQuest = (q) => {
+    const steps = data.steps.filter(s => s.quest_id === q.id);
+    const allTrans = data.translations.filter(t => t.id.startsWith(`quest.${q.id}.`));
+    setEditing({ quest: { ...q }, steps: steps.map(s => ({ ...s })), translations: allTrans.map(t => ({ ...t })) });
+    setShowModal(true);
+  };
+
+  const saveQuest = async () => {
+    // Auto-generate keys if empty
+    const e = { ...editing };
+    if (!e.quest.title_key) e.quest.title_key = `quest.${e.quest.id}.title`;
+    if (!e.quest.description_key) e.quest.description_key = `quest.${e.quest.id}.description`;
+
+    const r = await fetch(`${API}/api/${sessionId}/quests`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(e)
+    });
+    const d = await r.json();
+    if (d.ok) { toast('Квест сохранён ✓'); setShowModal(false); load(); }
+    else toast(d.error, 'error');
+  };
+
+  const deleteQuest = async (id) => {
+    if (!confirm(`Удалить квест "${id}"?`)) return;
+    const r = await fetch(`${API}/api/${sessionId}/quests/${id}`, { method: 'DELETE' });
+    const d = await r.json();
+    if (d.ok) { toast('Квест удалён'); load(); }
+    else toast(d.error, 'error');
+  };
+
+  const updateEditTrans = (key, lang, text) => {
+    setEditing(prev => {
+      const t = [...prev.translations];
+      const idx = t.findIndex(x => x.id === key && x.language_id === lang);
+      if (idx >= 0) t[idx] = { ...t[idx], text };
+      else t.push({ id: key, language_id: lang, text });
+      return { ...prev, translations: t };
+    });
+  };
+
+  const getEditTrans = (key, lang) => {
+    if (!editing) return '';
+    const t = editing.translations.find(x => x.id === key && x.language_id === lang);
+    return t ? t.text : '';
+  };
+
+  const addStep = () => {
+    setEditing(prev => ({
+      ...prev,
+      steps: [...prev.steps, { quest_id: prev.quest.id, step_index: prev.steps.length + 1, type: 'kill_enemy', target: '', required_count: 1 }]
+    }));
+  };
+
+  const updateStep = (i, field, val) => {
+    setEditing(prev => {
+      const steps = [...prev.steps];
+      steps[i] = { ...steps[i], [field]: field === 'required_count' ? parseInt(val) || 1 : val };
+      return { ...prev, steps };
+    });
+  };
+
+  const removeStep = (i) => {
+    setEditing(prev => ({ ...prev, steps: prev.steps.filter((_, idx) => idx !== i) }));
+  };
+
+  const languages = data ? (data.translations.map(t => t.language_id).filter((v, i, a) => a.indexOf(v) === i)) : ['ru', 'en'];
+
+  if (!data) return <div className="empty"><div className="empty-icon">⏳</div><h3>Загрузка...</h3></div>;
+
+  return (
+    <div>
+      <div className="stats-row">
+        <div className="stat-card"><div className="stat-val">{data.quests.length}</div><div className="stat-lbl">Квестов</div></div>
+        <div className="stat-card"><div className="stat-val">{data.steps.length}</div><div className="stat-lbl">Шагов</div></div>
+        <div className="stat-card"><div className="stat-val">{data.quests.filter(q=>q.is_story).length}</div><div className="stat-lbl">Сюжетных</div></div>
+      </div>
+
+      <div className="panel">
+        <div className="panel-header">
+          <span className="panel-title">⚔️ Квесты</span>
+          <button className="btn primary sm" onClick={newQuest}>+ Новый квест</button>
+        </div>
+        {data.quests.length === 0 ? (
+          <div className="empty"><div className="empty-icon">📋</div><h3>Квестов нет</h3></div>
+        ) : (
+          <div>
+            {data.quests.map(q => (
+              <div key={q.id} className={`list-item ${selected === q.id ? 'selected' : ''}`} onClick={() => setSelected(q.id === selected ? null : q.id)}>
+                <div className="list-item-id">{q.id}</div>
+                <div className="list-item-info">
+                  <div className="list-item-title">{getLang(q.title_key, 'ru') || getLang(q.title_key, 'en')}</div>
+                  <div className="list-item-sub">{getLang(q.description_key, 'ru') || getLang(q.description_key, 'en')}</div>
+                </div>
+                <span className={`badge ${q.is_story ? 'story' : 'side'}`}>{q.is_story ? 'story' : 'side'}</span>
+                <div style={{display:'flex',gap:6,marginLeft:'auto'}} onClick={e => e.stopPropagation()}>
+                  <button className="btn sm" onClick={() => editQuest(q)}>✏️ Ред.</button>
+                  <button className="btn sm danger" onClick={() => deleteQuest(q.id)}>🗑</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Quest detail panel */}
+      {selected && (() => {
+        const q = data.quests.find(x => x.id === selected);
+        if (!q) return null;
+        const qSteps = data.steps.filter(s => s.quest_id === selected);
+        return (
+          <div className="panel" style={{marginTop:20}}>
+            <div className="panel-header">
+              <span className="panel-title">📋 {selected}</span>
+              <span className={`badge ${q.is_story ? 'story' : 'side'}`}>{q.type}</span>
+            </div>
+            <div className="panel-body">
+              <div style={{marginBottom:14}}>
+                <div className="form-label" style={{marginBottom:8}}>Шаги квеста</div>
+                {qSteps.length === 0 ? <div style={{color:'var(--text2)',fontSize:12}}>Нет шагов</div> : (
+                  <div className="steps-list">
+                    {qSteps.map(s => (
+                      <div key={s.id} className="step-item">
+                        <div className="step-num">#{s.step_index}</div>
+                        <span className="tag">{s.type}</span>
+                        <span style={{fontSize:12}}>{s.target}</span>
+                        <span style={{fontSize:12,color:'var(--accent2)'}}>×{s.required_count}</span>
+                        <span></span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div>
+                <div className="form-label" style={{marginBottom:8}}>Переводы названия</div>
+                {languages.map(lang => (
+                  <div key={lang} style={{display:'flex',alignItems:'center',gap:8,marginBottom:4}}>
+                    <span className="tag">{lang}</span>
+                    <span style={{fontSize:12}}>{getLang(q.title_key, lang)}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* MODAL */}
+      {showModal && editing && (
+        <div className="modal-bg" onClick={() => setShowModal(false)}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <span className="modal-title">{editing.quest.id ? `Квест: ${editing.quest.id}` : 'Новый квест'}</span>
+              <button className="btn sm" onClick={() => setShowModal(false)}>✕</button>
+            </div>
+            <div className="modal-body">
+              <div className="form-grid">
+                <div className="form-row">
+                  <div className="form-group">
+                    <label className="form-label">ID квеста *</label>
+                    <input className="form-input" value={editing.quest.id} placeholder="kill_1_slimes"
+                      onChange={e => setEditing(p => ({ ...p, quest: { ...p.quest, id: e.target.value } }))}/>
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Тип</label>
+                    <select className="form-input" value={editing.quest.type}
+                      onChange={e => setEditing(p => ({ ...p, quest: { ...p.quest, type: e.target.value } }))}>
+                      <option value="single">single</option>
+                      <option value="chain">chain</option>
+                      <option value="repeatable">repeatable</option>
+                    </select>
+                  </div>
+                </div>
+                <div className="form-row">
+                  <div className="form-group">
+                    <label className="form-label">Ключ названия</label>
+                    <input className="form-input" value={editing.quest.title_key}
+                      placeholder={`quest.${editing.quest.id || 'id'}.title`}
+                      onChange={e => setEditing(p => ({ ...p, quest: { ...p.quest, title_key: e.target.value } }))}/>
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Ключ описания</label>
+                    <input className="form-input" value={editing.quest.description_key}
+                      placeholder={`quest.${editing.quest.id || 'id'}.description`}
+                      onChange={e => setEditing(p => ({ ...p, quest: { ...p.quest, description_key: e.target.value } }))}/>
+                  </div>
+                </div>
+                <label className="checkbox-group">
+                  <input type="checkbox" checked={!!editing.quest.is_story}
+                    onChange={e => setEditing(p => ({ ...p, quest: { ...p.quest, is_story: e.target.checked } }))}/>
+                  Сюжетный квест
+                </label>
+              </div>
+
+              <hr className="separator"/>
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}}>
+                <span className="form-label">Шаги выполнения</span>
+                <button className="btn sm" onClick={addStep}>+ Шаг</button>
+              </div>
+              <div className="steps-list">
+                {editing.steps.map((s, i) => (
+                  <div key={i} className="step-item">
+                    <div className="step-num" style={{color:'var(--accent)'}}>{i+1}</div>
+                    <select className="form-input" style={{fontSize:11}} value={s.type} onChange={e => updateStep(i,'type',e.target.value)}>
+                      <option>kill_enemy</option>
+                      <option>collect_item</option>
+                      <option>visit_location</option>
+                      <option>talk_to_npc</option>
+                    </select>
+                    <input className="form-input" style={{fontSize:11}} placeholder="Цель (enemy_id)" value={s.target} onChange={e => updateStep(i,'target',e.target.value)}/>
+                    <input className="form-input" style={{fontSize:11}} type="number" min="1" value={s.required_count} onChange={e => updateStep(i,'required_count',e.target.value)}/>
+                    <button className="btn sm danger" onClick={() => removeStep(i)}>✕</button>
+                  </div>
+                ))}
+              </div>
+
+              <hr className="separator"/>
+              <div className="form-label" style={{marginBottom:10}}>Переводы</div>
+              {['ru','en'].map(lang => (
+                <div key={lang}>
+                  <div style={{color:'var(--text2)',fontSize:10,marginBottom:6,textTransform:'uppercase',letterSpacing:'0.05em'}}>{lang}</div>
+                  <div className="form-row" style={{marginBottom:10}}>
+                    <div className="form-group">
+                      <label className="form-label">Название</label>
+                      <input className="form-input" value={getEditTrans(editing.quest.title_key || `quest.${editing.quest.id}.title`, lang)}
+                        onChange={e => updateEditTrans(editing.quest.title_key || `quest.${editing.quest.id}.title`, lang, e.target.value)}/>
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Описание</label>
+                      <textarea className="form-input" value={getEditTrans(editing.quest.description_key || `quest.${editing.quest.id}.description`, lang)}
+                        onChange={e => updateEditTrans(editing.quest.description_key || `quest.${editing.quest.id}.description`, lang, e.target.value)}/>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="modal-footer">
+              <button className="btn" onClick={() => setShowModal(false)}>Отмена</button>
+              <button className="btn primary" onClick={saveQuest}>💾 Сохранить</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ---- DIALOGUE EDITOR ----
+function DialogueEditor({ sessionId, toast }) {
+  const [data, setData] = useState(null);
+  const [selected, setSelected] = useState(null);
+  const [tab, setTab] = useState('list'); // 'list' | 'diagram'
+  const [showModal, setShowModal] = useState(false);
+  const [editing, setEditing] = useState(null);
+  const [lang, setLang] = useState('ru');
+
+  const load = async () => {
+    const r = await fetch(`${API}/api/${sessionId}/dialogues`);
+    setData(await r.json());
+  };
+
+  useEffect(() => { load(); }, []);
+
+  const getText = (key, l) => {
+    if (!data) return key;
+    const t = data.translations.find(t => t.id === key && t.language_id === (l || lang));
+    return t ? t.text : key;
+  };
+
+  const newDialogue = () => {
+    setEditing({ dialogue: { id: '', text_key: '' }, choices: [], translations: [] });
+    setShowModal(true);
+  };
+
+  const editDialogue = (d) => {
+    const choices = data.choices.filter(c => c.dialogue_id === d.id);
+    const allKeys = [d.text_key, ...choices.map(c => c.text_key)];
+    const translations = data.translations.filter(t => allKeys.includes(t.id));
+    setEditing({ dialogue: { ...d }, choices: choices.map(c => ({ ...c })), translations: [...translations] });
+    setShowModal(true);
+  };
+
+  const saveDialogue = async () => {
+    const e = { ...editing };
+    if (!e.dialogue.text_key) e.dialogue.text_key = `npc.${e.dialogue.id}.text`;
+    const r = await fetch(`${API}/api/${sessionId}/dialogues`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(e)
+    });
+    const d = await r.json();
+    if (d.ok) { toast('Диалог сохранён ✓'); setShowModal(false); load(); }
+    else toast(d.error, 'error');
+  };
+
+  const deleteDialogue = async (id) => {
+    if (!confirm(`Удалить диалог "${id}"?`)) return;
+    const r = await fetch(`${API}/api/${sessionId}/dialogues/${id}`, { method: 'DELETE' });
+    const d = await r.json();
+    if (d.ok) { toast('Диалог удалён'); load(); }
+    else toast(d.error, 'error');
+  };
+
+  const getEditTrans = (key, l) => {
+    if (!editing) return '';
+    const t = editing.translations.find(x => x.id === key && x.language_id === l);
+    return t ? t.text : '';
+  };
+
+  const updateEditTrans = (key, l, text) => {
+    setEditing(prev => {
+      const t = [...prev.translations];
+      const idx = t.findIndex(x => x.id === key && x.language_id === l);
+      if (idx >= 0) t[idx] = { ...t[idx], text };
+      else t.push({ id: key, language_id: l, text });
+      return { ...prev, translations: t };
+    });
+  };
+
+  const addChoice = () => {
+    if (!editing) return;
+    setEditing(prev => ({
+      ...prev,
+      choices: [...prev.choices, { dialogue_id: prev.dialogue.id, text_key: '', next_dialogue_id: '', condition_flag: '', condition_value: '', action: '' }]
+    }));
+  };
+
+  const updateChoice = (i, field, val) => {
+    setEditing(prev => {
+      const choices = [...prev.choices];
+      choices[i] = { ...choices[i], [field]: val };
+      return { ...prev, choices };
+    });
+  };
+
+  const removeChoice = (i) => {
+    setEditing(prev => ({ ...prev, choices: prev.choices.filter((_, idx) => idx !== i) }));
+  };
+
+  const languages = data ? [...new Set(data.translations.map(t => t.language_id))] : ['ru', 'en'];
+
+  if (!data) return <div className="empty"><div className="empty-icon">⏳</div><h3>Загрузка...</h3></div>;
+
+  const selectedDialogue = selected ? data.dialogues.find(d => d.id === selected) : null;
+  const selectedChoices = selected ? data.choices.filter(c => c.dialogue_id === selected) : [];
+
+  return (
+    <div>
+      <div className="stats-row">
+        <div className="stat-card"><div className="stat-val">{data.dialogues.length}</div><div className="stat-lbl">Диалогов</div></div>
+        <div className="stat-card"><div className="stat-val">{data.choices.length}</div><div className="stat-lbl">Вариантов</div></div>
+        <div style={{marginLeft:'auto',display:'flex',alignItems:'center',gap:8}}>
+          <span style={{fontSize:11,color:'var(--text2)'}}>Язык:</span>
+          {languages.map(l => (
+            <button key={l} className={`btn sm ${lang === l ? 'primary' : ''}`} onClick={() => setLang(l)}>{l.toUpperCase()}</button>
+          ))}
+        </div>
+      </div>
+
+      <div className="tabs">
+        <div className={`tab ${tab==='list'?'active':''}`} onClick={() => setTab('list')}>📋 Список</div>
+        <div className={`tab ${tab==='diagram'?'active':''}`} onClick={() => setTab('diagram')}>🗺 Схема веток</div>
+      </div>
+
+      {tab === 'list' && (
+        <div className="split">
+          <div className="split-left">
+            <div className="panel">
+              <div className="panel-header">
+                <span className="panel-title">💬 Диалоги</span>
+                <button className="btn primary sm" onClick={newDialogue}>+ Новый</button>
+              </div>
+              {data.dialogues.map(d => (
+                <div key={d.id} className={`list-item ${selected === d.id ? 'selected' : ''}`} onClick={() => setSelected(d.id)}>
+                  <div className="list-item-info">
+                    <div className="list-item-id">{d.id}</div>
+                    <div className="list-item-sub" style={{fontSize:11,marginTop:2}}>{getText(d.text_key)}</div>
+                  </div>
+                  <div style={{display:'flex',gap:5}} onClick={e => e.stopPropagation()}>
+                    <button className="btn sm" onClick={() => editDialogue(d)}>✏️</button>
+                    <button className="btn sm danger" onClick={() => deleteDialogue(d.id)}>🗑</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="split-right">
+            {selectedDialogue ? (
+              <div className="panel">
+                <div className="panel-header">
+                  <span className="panel-title">💬 {selectedDialogue.id}</span>
+                  <button className="btn sm primary" onClick={() => editDialogue(selectedDialogue)}>✏️ Редактировать</button>
+                </div>
+                <div className="panel-body">
+                  <div className="form-group" style={{marginBottom:16}}>
+                    <div className="form-label">Текст NPC</div>
+                    {languages.map(l => (
+                      <div key={l} style={{marginBottom:8}}>
+                        <div style={{display:'flex',gap:8,alignItems:'flex-start'}}>
+                          <span className="tag" style={{marginTop:4,flexShrink:0}}>{l}</span>
+                          <div style={{fontSize:12,lineHeight:1.6,color:'var(--text)'}}>{getText(selectedDialogue.text_key, l)}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <hr className="separator"/>
+                  <div className="form-label" style={{marginBottom:10}}>Варианты ответа ({selectedChoices.length})</div>
+                  <div className="flow-choices">
+                    {selectedChoices.map((c, i) => (
+                      <div key={i} className="flow-choice">
+                        <span style={{color:'var(--accent)',fontSize:12}}>▶</span>
+                        <span style={{flex:1}}>{getText(c.text_key)}</span>
+                        {c.next_dialogue_id && <span className="flow-choice-next">→ {c.next_dialogue_id}</span>}
+                        {c.action && <span className="flow-choice-action">⚡ {c.action}</span>}
+                      </div>
+                    ))}
+                    {selectedChoices.length === 0 && <div style={{color:'var(--text2)',fontSize:12}}>Нет вариантов ответа</div>}
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="empty">
+                <div className="empty-icon">💬</div>
+                <h3>Выберите диалог</h3>
+                <p style={{color:'var(--text2)',fontSize:12}}>Кликните на диалог слева</p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {tab === 'diagram' && (
+        <div>
+          <DialogueDiagram
+            dialogues={data.dialogues}
+            choices={data.choices}
+            translations={data.translations}
+            lang={lang}
+            onSelectNode={id => { setSelected(id); setTab('list'); }}
+            selectedId={selected}
+          />
+          <div style={{marginTop:10,fontSize:11,color:'var(--text2)',textAlign:'center'}}>
+            Кликните на узел для перехода к редактированию
+          </div>
+        </div>
+      )}
+
+      {/* MODAL */}
+      {showModal && editing && (
+        <div className="modal-bg" onClick={() => setShowModal(false)}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <span className="modal-title">{editing.dialogue.id ? `Диалог: ${editing.dialogue.id}` : 'Новый диалог'}</span>
+              <button className="btn sm" onClick={() => setShowModal(false)}>✕</button>
+            </div>
+            <div className="modal-body">
+              <div className="form-row" style={{marginBottom:14}}>
+                <div className="form-group">
+                  <label className="form-label">ID диалога *</label>
+                  <input className="form-input" value={editing.dialogue.id} placeholder="npc_base_start"
+                    onChange={e => setEditing(p => ({ ...p, dialogue: { ...p.dialogue, id: e.target.value } }))}/>
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Ключ текста</label>
+                  <input className="form-input" value={editing.dialogue.text_key}
+                    placeholder={`npc.${editing.dialogue.id || 'id'}.text`}
+                    onChange={e => setEditing(p => ({ ...p, dialogue: { ...p.dialogue, text_key: e.target.value } }))}/>
+                </div>
+              </div>
+
+              <div className="form-label" style={{marginBottom:8}}>Текст NPC</div>
+              {['ru','en'].map(l => (
+                <div key={l} className="form-group" style={{marginBottom:10}}>
+                  <label className="form-label">{l.toUpperCase()}</label>
+                  <textarea className="form-input" value={getEditTrans(editing.dialogue.text_key || `npc.${editing.dialogue.id}.text`, l)}
+                    onChange={e => updateEditTrans(editing.dialogue.text_key || `npc.${editing.dialogue.id}.text`, l, e.target.value)}/>
+                </div>
+              ))}
+
+              <hr className="separator"/>
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}}>
+                <span className="form-label">Варианты ответа</span>
+                <button className="btn sm" onClick={addChoice}>+ Вариант</button>
+              </div>
+              {editing.choices.map((c, i) => (
+                <div key={i} style={{background:'var(--surface2)',border:'1px solid var(--border)',borderRadius:8,padding:12,marginBottom:10}}>
+                  <div style={{display:'flex',justifyContent:'space-between',marginBottom:10}}>
+                    <span style={{color:'var(--accent)',fontSize:11,fontWeight:700}}>Вариант {i+1}</span>
+                    <button className="btn sm danger" onClick={() => removeChoice(i)}>Удалить</button>
+                  </div>
+                  <div className="form-grid">
+                    <div className="form-row">
+                      <div className="form-group">
+                        <label className="form-label">Ключ текста кнопки</label>
+                        <input className="form-input" value={c.text_key} placeholder="npc.base.choice_yes"
+                          onChange={e => updateChoice(i,'text_key',e.target.value)}/>
+                      </div>
+                      <div className="form-group">
+                        <label className="form-label">Следующий диалог</label>
+                        <input className="form-input" value={c.next_dialogue_id || ''} placeholder="npc_base_accept"
+                          onChange={e => updateChoice(i,'next_dialogue_id',e.target.value)}/>
+                      </div>
+                    </div>
+                    <div className="form-row">
+                      <div className="form-group">
+                        <label className="form-label">Действие (action)</label>
+                        <input className="form-input" value={c.action || ''} placeholder="offer_quest:kill_1_slimes"
+                          onChange={e => updateChoice(i,'action',e.target.value)}/>
+                      </div>
+                      <div className="form-group">
+                        <label className="form-label">Условие (флаг)</label>
+                        <input className="form-input" value={c.condition_flag || ''} placeholder="quest.x.completed"
+                          onChange={e => updateChoice(i,'condition_flag',e.target.value)}/>
+                      </div>
+                    </div>
+                    <div style={{marginTop:4}}>
+                      <div className="form-label" style={{marginBottom:8}}>Текст кнопок</div>
+                      {['ru','en'].map(l => (
+                        <div key={l} className="form-row" style={{marginBottom:6}}>
+                          <div className="form-group">
+                            <label className="form-label">{l.toUpperCase()}</label>
+                            <input className="form-input" value={getEditTrans(c.text_key, l)}
+                              onChange={e => updateEditTrans(c.text_key, l, e.target.value)}/>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="modal-footer">
+              <button className="btn" onClick={() => setShowModal(false)}>Отмена</button>
+              <button className="btn primary" onClick={saveDialogue}>💾 Сохранить</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ---- TRANSLATIONS EDITOR ----
+function TranslationsEditor({ sessionId, toast }) {
+  const [data, setData] = useState(null);
+  const [filter, setFilter] = useState('');
+  const [saving, setSaving] = useState({});
+
+  const load = async () => {
+    const r = await fetch(`${API}/api/${sessionId}/translations`);
+    setData(await r.json());
+  };
+
+  useEffect(() => { load(); }, []);
+
+  const save = async (id, lang, text) => {
+    const key = `${id}_${lang}`;
+    setSaving(p => ({ ...p, [key]: true }));
+    await fetch(`${API}/api/${sessionId}/translations`, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, language_id: lang, text })
+    });
+    setSaving(p => ({ ...p, [key]: false }));
+    toast('Перевод сохранён');
+    load();
+  };
+
+  if (!data) return <div className="empty"><div className="empty-icon">⏳</div><h3>Загрузка...</h3></div>;
+
+  const langs = [...new Set(data.translations.map(t => t.language_id))];
+  const keys = [...new Set(data.translations.map(t => t.id))].filter(k => !filter || k.toLowerCase().includes(filter.toLowerCase()));
+
+  return (
+    <div>
+      <div className="stats-row">
+        <div className="stat-card"><div className="stat-val">{keys.length}</div><div className="stat-lbl">Ключей</div></div>
+        <div className="stat-card"><div className="stat-val">{data.translations.length}</div><div className="stat-lbl">Переводов</div></div>
+        {data.languages.map(l => (
+          <div key={l.id} className="stat-card"><div className="stat-val">{l.id.toUpperCase()}</div><div className="stat-lbl">{l.name}</div></div>
+        ))}
+      </div>
+      <div className="panel">
+        <div className="panel-header">
+          <span className="panel-title">🌐 Переводы</span>
+          <input className="form-input" style={{width:220}} placeholder="Фильтр по ключу..." value={filter}
+            onChange={e => setFilter(e.target.value)}/>
+        </div>
+        <div style={{overflowX:'auto'}}>
+          <table className="trans-table">
+            <thead>
+              <tr>
+                <th>Ключ</th>
+                {langs.map(l => <th key={l}>{l.toUpperCase()}</th>)}
+              </tr>
+            </thead>
+            <tbody>
+              {keys.map(key => (
+                <tr key={key}>
+                  <td><span className="trans-key">{key}</span></td>
+                  {langs.map(l => {
+                    const t = data.translations.find(x => x.id === key && x.language_id === l);
+                    return (
+                      <td key={l}>
+                        <input
+                          className="inline-edit"
+                          defaultValue={t ? t.text : ''}
+                          onBlur={e => {
+                            if (e.target.value !== (t ? t.text : '')) {
+                              save(key, l, e.target.value);
+                            }
+                          }}
+                        />
+                      </td>
+                    );
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ---- MAIN APP ----
+function App() {
+  const [session, setSession] = useState(null);
+  const [page, setPage] = useState('quests');
+  const { toasts, show: showToast } = useToast();
+
+  const download = async () => {
+    window.location.href = `${API}/api/download/${session.sessionId}`;
+  };
+
+  const reset = () => {
+    if (!confirm('Выгрузить текущую БД и загрузить новую?')) return;
+    setSession(null);
+  };
+
+  const toast = (msg, type) => showToast(msg, type);
+
+  if (!session) return (
+    <div className="app">
+      <div className="topbar">
+        <div className="logo">RPG <span>DB</span> Editor</div>
+      </div>
+      <div className="main" style={{justifyContent:'center'}}>
+        <div className="content" style={{display:'flex',alignItems:'center',justifyContent:'center'}}>
+          <UploadScreen onUpload={setSession}/>
+        </div>
+      </div>
+    </div>
+  );
+
+  const nav = [
+    { id: 'quests', icon: '⚔️', label: 'Квесты' },
+    { id: 'dialogues', icon: '💬', label: 'Диалоги' },
+    { id: 'translations', icon: '🌐', label: 'Переводы' },
+  ];
+
+  return (
+    <div className="app">
+      <div className="topbar">
+        <div className="logo">RPG <span>DB</span> Editor</div>
+        <div className="session-badge active">📁 {session.filename}</div>
+        <div className="topbar-right">
+          <button className="btn success" onClick={download}>⬇️ Скачать БД</button>
+          <button className="btn" onClick={reset}>📤 Новый файл</button>
+        </div>
+      </div>
+      <div className="main">
+        <div className="sidebar">
+          <div className="nav-section">Контент</div>
+          {nav.map(n => (
+            <div key={n.id} className={`nav-item ${page === n.id ? 'active' : ''}`} onClick={() => setPage(n.id)}>
+              <span className="nav-icon">{n.icon}</span>
+              {n.label}
+            </div>
+          ))}
+          <div className="nav-section" style={{marginTop:8}}>База данных</div>
+          <div style={{padding:'8px 14px'}}>
+            {session.tables.map(t => (
+              <div key={t} style={{fontSize:10,color:'var(--text2)',padding:'3px 4px',borderLeft:'2px solid var(--border)',marginBottom:3,paddingLeft:8}}>{t}</div>
+            ))}
+          </div>
+        </div>
+        <div className="content">
+          {page === 'quests' && <QuestEditor sessionId={session.sessionId} toast={toast}/>}
+          {page === 'dialogues' && <DialogueEditor sessionId={session.sessionId} toast={toast}/>}
+          {page === 'translations' && <TranslationsEditor sessionId={session.sessionId} toast={toast}/>}
+        </div>
+      </div>
+      <div className="toast-wrap">
+        {toasts.map(t => (
+          <div key={t.id} className={`toast ${t.type}`}>{t.msg}</div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>
