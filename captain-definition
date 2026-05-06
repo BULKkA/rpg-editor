@@ -1,7 +1,6 @@
 {
   "schemaVersion": 2,
   "dockerfileLines": [],
-  "imageName": "",
   "notExposeAsWebApp": false,
   "containerHttpPort": "3000",
   "description": "RPG Quest & Dialogue DB Editor",
