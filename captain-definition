@@ -2,7 +2,7 @@
   "schemaVersion": 2,
   "dockerfileLines": [],
   "notExposeAsWebApp": false,
-  "containerHttpPort": "3000",
+  "containerHttpPort": "8000",
   "description": "RPG Quest & Dialogue DB Editor",
   "websocketSupport": false
 }
